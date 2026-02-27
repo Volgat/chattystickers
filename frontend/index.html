@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChattyStickers — AI Animated & Talking Stickers</title>
+  <meta name="description"
+    content="Generate animated and talking stickers with AI. Export to GIF, WebP, or WebM for WhatsApp, Telegram, and Discord." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+
+  <!-- Background particles -->
+  <div class="bg-particles" id="bgParticles"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">💬✨</span>
+        <span class="logo-text">Chatty<span class="accent">Stickers</span></span>
+      </div>
+      <div class="header-badge">
+        <span class="badge-dot"></span>
+        <span>Powered by EARCP AI</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-tag">🎉 New — Talking AI Stickers</div>
+      <h1 class="hero-title">
+        Turn your<br />
+        <span class="gradient-text">phrases into stickers</span><br />
+        animated and talking
+      </h1>
+      <p class="hero-sub">
+        Type a phrase, AI generates a sticker with image, voice and animation.<br />
+        Export to GIF, WebP or WebM for WhatsApp, Telegram & Discord.
+      </p>
+    </div>
+  </section>
+
+  <!-- Main App -->
+  <main class="app-container">
+
+    <!-- Input Card -->
+    <div class="card input-card">
+      <div class="card-header">
+        <div class="step-badge">Step 1</div>
+        <h2>Describe your sticker</h2>
+        <p class="card-sub">Write a phrase or a mini-scenario</p>
+      </div>
+
+      <div class="input-wrapper">
+        <textarea id="phraseInput" class="phrase-input" placeholder="Ex: My cat says &#39;Hello !&#39; while dancing"
+          rows="3" maxlength="300"></textarea>
+        <div class="input-meta">
+          <div class="example-chips">
+            <span class="chip-label">Examples:</span>
+            <button class="chip" onclick="setExample(this)">🐱 My cat says 'Hello !' while dancing</button>
+            <button class="chip" onclick="setExample(this)">🐶 My dog sings 'I love you'</button>
+            <button class="chip" onclick="setExample(this)">🤖 The robot says 'Hello human!'</button>
+            <button class="chip" onclick="setExample(this)">🐻 The bear is sad and crying</button>
+          </div>
+          <span class="char-count" id="charCount">0 / 300</span>
+        </div>
+      </div>
+
+      <button class="btn-generate" id="generateBtn" onclick="generateSticker()">
+        <span class="btn-icon">✨</span>
+        <span class="btn-text">Generate Sticker</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="progress-card card" id="progressCard" style="display:none">
+      <div class="progress-header">
+        <div class="spinner"></div>
+        <span id="progressLabel">Initializing...</span>
+      </div>
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="pipeline-steps" id="pipelineSteps">
+        <div class="step-item" id="step-parse">🧠 Text analysis</div>
+        <div class="step-item" id="step-image">🎨 AI Image generation</div>
+        <div class="step-item" id="step-tts">🔊 Voice synthesis</div>
+        <div class="step-item" id="step-anim">🎬 Sticker animation</div>
+        <div class="step-item" id="step-earcp">🛡️ EARCP verification</div>
+        <div class="step-item" id="step-export">📦 Multi-format export</div>
+      </div>
+    </div>
+
+    <!-- Result Section -->
+    <div id="resultSection" style="display:none">
+
+      <!-- Preview Card -->
+      <div class="card preview-card">
+        <div class="card-header">
+          <div class="step-badge success">Result</div>
+          <h2>Your Animated Sticker</h2>
+        </div>
+
+        <div class="preview-grid">
+          <!-- PRIMARY: Unified Talking Sticker (MP4 with audio) -->
+          <div class="preview-main">
+            <div class="preview-frame">
+              <!-- Video sticker: animation + voice in one file -->
+              <video id="stickerVideo" class="sticker-preview" autoplay loop muted playsinline
+                style="display:none"></video>
+              <!-- Fallback GIF if video unavailable -->
+              <img id="gifFallback" class="sticker-preview" src="" alt="Animated sticker" style="display:none" />
+              <div class="preview-overlay" id="previewBadge">
+                <span id="previewLabel">🎬🔊 Multimedia Sticker</span>
+              </div>
+            </div>
+            <!-- Audio controls for the talking sticker -->
+            <div class="sticker-audio-bar" id="stickerAudioBar" style="display:none">
+              <button class="audio-toggle-btn" id="audioToggleBtn" onclick="toggleStickerAudio()">
+                <span id="audioToggleIcon">🔊</span>
+                <span id="audioToggleText">Sound ON</span>
+              </button>
+              <div class="audio-mini-wave">
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+                <div class="wave-bar"></div>
+              </div>
+              <span class="sticker-format-badge">WebM • Animation + Voix</span>
+            </div>
+            <div class="parsed-info" id="parsedInfo"></div>
+          </div>
+
+          <!-- Side Panel: Image + Info -->
+          <div class="preview-side">
+            <!-- Static Source Image -->
+            <div class="side-preview-box">
+              <div class="side-label">🎨 Source image (AI)</div>
+              <img id="staticPreview" class="side-preview-img" src="" alt="Sticker image" />
+            </div>
+            <!-- Sticker info -->
+            <div class="side-preview-box" id="stickerInfoBox">
+              <div class="side-label">📦 Final file</div>
+              <div class="sticker-file-info" id="stickerFileInfo">
+                <!-- Filled by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- EARCP Score Card -->
+      <div class="card earcp-card">
+        <div class="card-header">
+          <div class="step-badge earcp">EARCP</div>
+          <h2>Quality & Coherence Score</h2>
+          <p class="card-sub">Multi-signal verification by the EARCP algorithm</p>
+        </div>
+
+        <div class="earcp-content" id="earcpContent">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+      <!-- Export Card -->
+      <div class="card export-card">
+        <div class="card-header">
+          <div class="step-badge export">Export</div>
+          <h2>Download your Sticker</h2>
+          <p class="card-sub">Formats compatible with WhatsApp, Telegram & Discord</p>
+        </div>
+
+        <div class="export-grid" id="exportGrid">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Error Card -->
+    <div class="card error-card" id="errorCard" style="display:none">
+      <div class="error-icon">⚠️</div>
+      <h3 id="errorTitle">An error occurred</h3>
+      <p id="errorMessage"></p>
+      <button class="btn-retry" onclick="resetUI()">Retry</button>
+    </div>
+
+    <!-- How it Works -->
+    <section class="how-it-works">
+      <h2 class="section-title">How it works?</h2>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-icon">✍️</div>
+          <h3>Write a phrase</h3>
+          <p>Describe your character and what they are doing or saying.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-icon">🎨</div>
+          <h3>AI Image (SDXL)</h3>
+          <p>Stable Diffusion generates a matching cartoon sticker.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-icon">🔊</div>
+          <h3>TTS Voice</h3>
+          <p>A natural voice reads your text in French or English.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <div class="step-icon">🎬</div>
+          <h3>Animation</h3>
+          <p>The character moves, dances or speaks according to the detected emotion.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">5</div>
+          <div class="step-icon">🛡️</div>
+          <h3>EARCP Verification</h3>
+          <p>The EARCP algorithm evaluates sticker coherence and quality.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">6</div>
+          <div class="step-icon">📤</div>
+          <h3>Export & Share</h3>
+          <p>Download in GIF, WebP or WebM and send everywhere.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo">💬✨ ChattyStickers</div>
+      <div class="footer-text">
+        Powered by <a href="https://github.com/Volgat/earcp" target="_blank">EARCP</a> ·
+        Stable Diffusion · gTTS · Python
+      </div>
+      <div class="footer-text">© 2025 Mike Amega — All rights reserved</div>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+
+</html>
