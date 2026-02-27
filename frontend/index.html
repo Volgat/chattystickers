@@ -27,7 +27,7 @@
       </div>
       <div class="header-badge">
         <span class="badge-dot"></span>
-        <span>Powered by EARCP AI</span>
+        <span>AI Quality Guard Active</span>
       </div>
     </div>
   </header>
@@ -55,28 +55,54 @@
     <div class="card input-card">
       <div class="card-header">
         <div class="step-badge">Step 1</div>
-        <h2>Describe your sticker</h2>
-        <p class="card-sub">Write a phrase or a mini-scenario</p>
+        <h2>Describe & Personalize</h2>
+        <p class="card-sub">Choose AI generation or use your own avatar photo</p>
       </div>
 
-      <div class="input-wrapper">
-        <textarea id="phraseInput" class="phrase-input" placeholder="Ex: My cat says &#39;Hello !&#39; while dancing"
-          rows="3" maxlength="300"></textarea>
-        <div class="input-meta">
-          <div class="example-chips">
-            <span class="chip-label">Examples:</span>
-            <button class="chip" onclick="setExample(this)">🐱 My cat says 'Hello !' while dancing</button>
-            <button class="chip" onclick="setExample(this)">🐶 My dog sings 'I love you'</button>
-            <button class="chip" onclick="setExample(this)">🤖 The robot says 'Hello human!'</button>
-            <button class="chip" onclick="setExample(this)">🐻 The bear is sad and crying</button>
+      <div class="input-mode-tabs">
+        <button class="tab-btn active" id="tab-ai" onclick="setMode('ai')">🤖 AI Generation</button>
+        <button class="tab-btn" id="tab-upload" onclick="setMode('upload')">📸 Custom Photo</button>
+      </div>
+
+      <div id="aiModeArea">
+        <div class="input-wrapper">
+          <textarea id="phraseInput" class="phrase-input" placeholder="Ex: My cat says &#39;Hello !&#39; while dancing"
+            rows="3" maxlength="300"></textarea>
+          <div class="input-meta">
+            <div class="example-chips">
+              <span class="chip-label">Examples:</span>
+              <button class="chip" onclick="setExample(this)">🐱 My cat says 'Hello !' while dancing</button>
+              <button class="chip" onclick="setExample(this)">🐶 My dog sings 'I love you'</button>
+              <button class="chip" onclick="setExample(this)">🤖 The robot says 'Hello human!'</button>
+              <button class="chip" onclick="setExample(this)">🐻 The bear is sad and crying</button>
+            </div>
+            <span class="char-count" id="charCount">0 / 300</span>
           </div>
-          <span class="char-count" id="charCount">0 / 300</span>
+        </div>
+      </div>
+
+      <div id="uploadModeArea" style="display:none">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">📁</div>
+          <div class="upload-text">
+            <strong>Click to upload</strong> or drag and drop<br />
+            <span>(JPG, PNG or WEBP · 512x512 recommended)</span>
+          </div>
+          <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+          <div id="uploadPreview" class="upload-preview-container" style="display:none">
+            <img id="imagePreview" src="" alt="Avatar preview">
+            <button class="remove-upload" onclick="removeUpload(event)">✕</button>
+          </div>
+        </div>
+        <div class="input-wrapper" style="margin-top:20px">
+          <textarea id="phraseInputUpload" class="phrase-input"
+            placeholder="What should your avatar say? (Ex: 'Happy Birthday!')" rows="2" maxlength="200"></textarea>
         </div>
       </div>
 
       <button class="btn-generate" id="generateBtn" onclick="generateSticker()">
         <span class="btn-icon">✨</span>
-        <span class="btn-text">Generate Sticker</span>
+        <span class="btn-text">Generate Talking Sticker</span>
         <span class="btn-arrow">→</span>
       </button>
     </div>
@@ -95,7 +121,7 @@
         <div class="step-item" id="step-image">🎨 AI Image generation</div>
         <div class="step-item" id="step-tts">🔊 Voice synthesis</div>
         <div class="step-item" id="step-anim">🎬 Sticker animation</div>
-        <div class="step-item" id="step-earcp">🛡️ EARCP verification</div>
+        <div class="step-item" id="step-earcp">🛡️ Quality check</div>
         <div class="step-item" id="step-export">📦 Multi-format export</div>
       </div>
     </div>
@@ -209,8 +235,8 @@
         <div class="step-card">
           <div class="step-num">2</div>
           <div class="step-icon">🎨</div>
-          <h3>AI Image (SDXL)</h3>
-          <p>Stable Diffusion generates a matching cartoon sticker.</p>
+          <h3>AI Image</h3>
+          <p>Advanced neural models generate a matching cartoon sticker.</p>
         </div>
         <div class="step-card">
           <div class="step-num">3</div>
@@ -227,8 +253,8 @@
         <div class="step-card">
           <div class="step-num">5</div>
           <div class="step-icon">🛡️</div>
-          <h3>EARCP Verification</h3>
-          <p>The EARCP algorithm evaluates sticker coherence and quality.</p>
+          <h3>Quality Control</h3>
+          <p>Our AI system evaluates sticker coherence and quality for the best result.</p>
         </div>
         <div class="step-card">
           <div class="step-num">6</div>
@@ -246,8 +272,8 @@
     <div class="footer-inner">
       <div class="footer-logo">💬✨ ChattyStickers</div>
       <div class="footer-text">
-        Powered by <a href="https://github.com/Volgat/earcp" target="_blank">EARCP</a> ·
-        Stable Diffusion · gTTS · Python
+        Powered by Advanced AI ·
+        Stable Diffusion · TTS · Python
       </div>
       <div class="footer-text">© 2025 Mike Amega — All rights reserved</div>
     </div>

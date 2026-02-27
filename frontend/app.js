@@ -48,15 +48,49 @@ function setExample(btn) {
 let isGenerating = false;
 let currentSessionId = null;
 let currentExports = {};
+let currentMode = 'ai'; // 'ai' or 'upload'
+let uploadedFile = null;
+
+// ── Mode Switching ────────────────────────────────────────────────────────────
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById("tab-ai").classList.toggle("active", mode === 'ai');
+    document.getElementById("tab-upload").classList.toggle("active", mode === 'upload');
+    document.getElementById("aiModeArea").style.display = mode === 'ai' ? 'block' : 'none';
+    document.getElementById("uploadModeArea").style.display = mode === 'upload' ? 'block' : 'none';
+}
+
+// ── File Handling ─────────────────────────────────────────────────────────────
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    uploadedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById("imagePreview").src = e.target.result;
+        document.getElementById("uploadPreview").style.display = "flex";
+        document.getElementById("uploadZone").classList.add("has-file");
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeUpload(event) {
+    event.stopPropagation();
+    uploadedFile = null;
+    document.getElementById("fileInput").value = "";
+    document.getElementById("uploadPreview").style.display = "none";
+    document.getElementById("uploadZone").classList.remove("has-file");
+}
 
 // ── Pipeline Progress Simulation ─────────────────────────────────────────────
 const PIPELINE_STEPS = [
     { id: "step-parse", label: "🧠 Analyzing text...", duration: 800, progress: 10 },
-    { id: "step-image", label: "🎨 Generating AI Image (SDXL)...", duration: 15000, progress: 45 },
-    { id: "step-tts", label: "🔊 Voice Synthesis TTS...", duration: 3000, progress: 60 },
-    { id: "step-anim", label: "🎬 Animating sticker...", duration: 4000, progress: 80 },
-    { id: "step-earcp", label: "🛡️ EARCP Verification...", duration: 1000, progress: 90 },
-    { id: "step-export", label: "📦 Multi-format Export...", duration: 2000, progress: 98 },
+    { id: "step-image", label: "🎨 Image Processing...", duration: 5000, progress: 45 },
+    { id: "step-tts", label: "🔊 Voice Synthesis...", duration: 8000, progress: 60 },
+    { id: "step-anim", label: "🎬 Syncing Animation...", duration: 4000, progress: 80 },
+    { id: "step-earcp", label: "🛡️ Quality Verification...", duration: 1000, progress: 90 },
+    { id: "step-export", label: "📦 Finalizing Stickers...", duration: 2000, progress: 98 },
 ];
 
 function setStepState(stepId, state) {
@@ -85,17 +119,32 @@ function advanceStep() {
 
 // ── Main Generate Function ───────────────────────────────────────────────────
 async function generateSticker() {
-    const phrase = phraseInput.value.trim();
+    const inputId = currentMode === 'ai' ? 'phraseInput' : 'phraseInputUpload';
+    const phraseElement = document.getElementById(inputId);
+    const phrase = phraseElement.value.trim();
+
     if (!phrase) {
-        phraseInput.focus();
-        phraseInput.style.borderColor = "var(--accent-pink)";
-        setTimeout(() => { phraseInput.style.borderColor = ""; }, 1500);
+        phraseElement.focus();
+        phraseElement.style.borderColor = "var(--accent-pink)";
+        setTimeout(() => { phraseElement.style.borderColor = ""; }, 1500);
+        return;
+    }
+
+    if (currentMode === 'upload' && !uploadedFile) {
+        showError("Please upload a photo or avatar first!");
         return;
     }
 
     if (isGenerating) return;
     isGenerating = true;
     stepIndex = 0;
+
+    // Adjust labels based on mode
+    if (currentMode === 'upload') {
+        PIPELINE_STEPS[1].label = "📸 Processing your Photo...";
+    } else {
+        PIPELINE_STEPS[1].label = "🎨 Generating AI Image...";
+    }
 
     // Reset UI
     document.getElementById("resultSection").style.display = "none";
@@ -110,7 +159,7 @@ async function generateSticker() {
 
     const btn = document.getElementById("generateBtn");
     btn.disabled = true;
-    btn.querySelector(".btn-text").textContent = "Generating...";
+    btn.querySelector(".btn-text").textContent = "Creating...";
     btn.querySelector(".btn-icon").textContent = "⏳";
 
     // Start step animation
@@ -118,13 +167,18 @@ async function generateSticker() {
     const stepInterval = setInterval(() => {
         const step = advanceStep();
         if (!step) clearInterval(stepInterval);
-    }, 4000);
+    }, 4500);
 
     try {
+        const formData = new FormData();
+        formData.append("phrase", phrase);
+        if (currentMode === 'upload' && uploadedFile) {
+            formData.append("avatar", uploadedFile);
+        }
+
         const response = await fetch("/api/generate", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phrase }),
+            body: formData, // Auto sets correct content-type for multipart
         });
 
         clearInterval(stepInterval);
@@ -150,11 +204,11 @@ async function generateSticker() {
     } catch (err) {
         clearInterval(stepInterval);
         progressCard.style.display = "none";
-        showError("Could not contact server. Check if Flask is running on localhost:5000", err.toString());
+        showError("Connection lost", err.toString());
     } finally {
         isGenerating = false;
         btn.disabled = false;
-        btn.querySelector(".btn-text").textContent = "Generate Sticker";
+        btn.querySelector(".btn-text").textContent = "Generate Talking Sticker";
         btn.querySelector(".btn-icon").textContent = "✨";
     }
 }
@@ -283,9 +337,8 @@ function renderEARCPReport(report) {
         <span class="score-label-sm">EARCP</span>
       </div>
       <div class="score-ring-info">
-        <h3 style="color:var(--text-primary)">${grade}</h3>
-        <p>Performance: <strong>${Math.round(P * 100)}%</strong> &nbsp;·&nbsp; Coherence: <strong>${Math.round(C * 100)}%</strong></p>
-        <p style="margin-top:4px; font-size:0.8rem; color:var(--text-muted)">β=${report.beta ?? 0.65} · Formula: Q = β×P + (1-β)×C</p>
+        <h3 style="color:var(--text-primary)">Generated with ${grade} quality</h3>
+        <p>Overall Score: <strong>${pct}%</strong></p>
       </div>
     </div>
     <div class="earcp-breakdown">
@@ -296,10 +349,9 @@ function renderEARCPReport(report) {
     const compIcons = { text: "📝", image: "🎨", audio: "🔊", animation: "🎬" };
     const compNames = { text: "Text", image: "Image", audio: "Audio", animation: "Animation" };
     for (const [key, val] of Object.entries(comps)) {
-        const w = weights[key] ? ` (w=${(weights[key] * 100).toFixed(0)}%)` : "";
         html += `
       <div class="score-row">
-        <span class="score-row-label">${compIcons[key] || ""} ${compNames[key] || key}${w}</span>
+        <span class="score-row-label">${compIcons[key] || ""} ${compNames[key] || key}</span>
         <div class="score-bar"><div class="score-fill" style="width:${Math.round(val * 100)}%"></div></div>
         <span class="score-val">${Math.round(val * 100)}%</span>
       </div>`;
@@ -384,7 +436,7 @@ function renderExports(exportUrls, sessionId) {
         }
         const downloadUrl = `/api/download/${sessionId}/${f.key.toLowerCase()}`;
         return `
-      <a href="${downloadUrl}" download class="export-btn ${f.color}">
+      <a href="${downloadUrl}" download="chattysticker_${sessionId}.${f.key.toLowerCase()}" class="export-btn ${f.color}">
         <span class="export-btn-icon">${f.icon}</span>
         <span class="export-btn-format">.${f.label}</span>
         <span class="export-btn-desc">${f.desc.replace('\n', '<br/>')}</span>
@@ -396,7 +448,7 @@ function renderExports(exportUrls, sessionId) {
 function showError(message, detail) {
     const errorCard = document.getElementById("errorCard");
     document.getElementById("errorTitle").textContent = "An error occurred";
-    document.getElementById("errorMessage").textContent = message + (detail ? ` — ${detail.substring(0, 200)}` : "");
+    document.getElementById("errorMessage").textContent = message + (detail ? ` — ${detail.substring(0, 200)} ` : "");
     errorCard.style.display = "block";
     errorCard.scrollIntoView({ behavior: "smooth", block: "center" });
 }

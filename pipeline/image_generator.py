@@ -74,7 +74,12 @@ def generate_image_from_hf(prompt: str, output_path: str) -> str:
                     )
                     break  # Break retry loop, try next model
             except Exception as e:
-                print(f"[ImageGen] Error with {model}: {e}")
+                try:
+                    print(f"[ImageGen] Error with {model}: {e}")
+                except UnicodeEncodeError:
+                    print(
+                        f"[ImageGen] Error with {model}: [Exception contains special characters]"
+                    )
                 break  # Break retry loop, try next model
 
     # All models failed → generate beautiful placeholder

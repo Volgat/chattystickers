@@ -4,9 +4,7 @@ Parses user input into structured generation parameters.
 """
 
 import re
-import os
 import json
-import requests
 
 # Emotion keywords -> animation style & visual tone
 EMOTION_MAP = {
@@ -71,6 +69,26 @@ def extract_speech_text(phrase: str) -> str:
     return phrase
 
 
+def inject_audio_tags(speech_text: str, emotion: str) -> str:
+    """Inject Bark-specific tags [laughter], [musical], [whispering] based on emotion/text."""
+    text_lower = speech_text.lower()
+
+    # Emotional tag injection for Bark
+    if "joyeux anniversaire" in text_lower or "happy birthday" in text_lower:
+        return f"♪ Happy Birthday! [laughter] {speech_text} ♪"
+
+    if emotion == "laughing" or "riant" in text_lower or "laugh" in text_lower:
+        return f"[laughter] {speech_text}"
+
+    if emotion == "singing" or "chante" in text_lower:
+        return f"♪ {speech_text} ♪"
+
+    if "chuchote" in text_lower or "whisper" in text_lower:
+        return f"[whispering] {speech_text}"
+
+    return speech_text
+
+
 def parse_phrase(phrase: str) -> dict:
     """
     Parse a user phrase into sticker generation parameters.
@@ -81,7 +99,10 @@ def parse_phrase(phrase: str) -> dict:
     """
     subject = detect_subject(phrase)
     emotion, image_style = detect_emotion_and_style(phrase)
-    speech_text = extract_speech_text(phrase)
+    raw_speech_text = extract_speech_text(phrase)
+
+    # NEW: Enhanced speech text with expressive tags
+    speech_text = inject_audio_tags(raw_speech_text, emotion)
 
     # Build a rich DALL-E/SD style prompt
     image_prompt = (
@@ -104,4 +125,7 @@ def parse_phrase(phrase: str) -> dict:
 if __name__ == "__main__":
     test = "Mon chat dit 'Salut !' en dansant"
     result = parse_phrase(test)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    try:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    except UnicodeEncodeError:
+        print(json.dumps(result, indent=2, ensure_ascii=True))

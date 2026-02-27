@@ -5,7 +5,6 @@ Main entry point: orchestrates the full AI sticker generation pipeline.
 
 import os
 import uuid
-import json
 import time
 import traceback
 from flask import Flask, request, jsonify, send_file, send_from_directory
@@ -50,52 +49,66 @@ def health():
 @app.route("/api/generate", methods=["POST"])
 def generate():
     """
-    POST /api/generate
-    Body: {"phrase": "Mon chat dit 'Salut !' en dansant"}
-
-    Returns JSON with:
-      - session_id
-      - parsed parameters
-      - file paths (relative URLs for browser)
-      - earcp_report (quality scores)
-      - export_urls (gif, webp, mp4)
+    POST /api/generate (Multipart or JSON)
+    Body:
+      - phrase (text)
+      - avatar (file, optional)
     """
-    data = request.get_json()
-    if not data or "phrase" not in data:
-        return jsonify({"error": "Missing 'phrase' in request body"}), 400
+    # Handle both JSON and Form Data
+    if request.is_json:
+        data = request.get_json()
+        phrase = data.get("phrase", "").strip()
+        avatar_file = None
+    else:
+        phrase = request.form.get("phrase", "").strip()
+        avatar_file = request.files.get("avatar")
 
-    phrase = data["phrase"].strip()
     if not phrase:
-        return jsonify({"error": "Phrase cannot be empty"}), 400
+        return jsonify({"error": "Missing 'phrase'"}), 400
 
     if len(phrase) > 500:
         return jsonify({"error": "Phrase too long (max 500 chars)"}), 400
 
-    session_id = str(uuid.uuid4())[:8]
-    session_dir = os.path.join(OUTPUT_DIR, session_id)
-    os.makedirs(session_dir, exist_ok=True)
-
-    start_time = time.time()
-
     try:
-        # ── Step 1: Parse phrase ─────────────────────────────────
+        # ── Setup session ────────────────────────────────────────
+        session_id = str(uuid.uuid4())[:8]
+        session_dir = os.path.join(OUTPUT_DIR, session_id)
+        os.makedirs(session_dir, exist_ok=True)
+
+        start_time = time.time()
         print(f"\n[{session_id}] === ChattyStickers Pipeline Start ===")
-        print(f"[{session_id}] Phrase: {phrase}")
+        # Safe print for Windows consoles
+        try:
+            print(f"[{session_id}] Phrase: {phrase}")
+        except UnicodeEncodeError:
+            print(f"[{session_id}] Phrase: [Contains special characters/emojis]")
+
+        # ── Step 1: Parse phrase ─────────────────────────────────
         parsed = parse_phrase(phrase)
-        print(f"[{session_id}] Parsed: {json.dumps(parsed, ensure_ascii=False)}")
+        print(f"[{session_id}] Parsed Subject: {parsed.get('subject')}")
+        print(f"[{session_id}] Parsed Emotion: {parsed.get('emotion')}")
 
-        # ── Step 2: Generate image ────────────────────────────────
-        image_path = generate_sticker_image(
-            image_prompt=parsed["image_prompt"],
-            session_id=session_id,
-            output_dir=session_dir,
-        )
+        # ── Step 2: Handle Image (AI or Upload) ──────────────────
+        if avatar_file:
+            print(f"[{session_id}] Using uploaded avatar photo")
+            image_path = os.path.join(
+                session_dir, f"{session_id}_avatar_{avatar_file.filename}"
+            )
+            avatar_file.save(image_path)
+        else:
+            print(f"[{session_id}] Generating AI Image...")
+            image_path = generate_sticker_image(
+                image_prompt=parsed["image_prompt"],
+                session_id=session_id,
+                output_dir=session_dir,
+            )
 
-        # ── Step 3: Generate voice ────────────────────────────────
+        # ── Step 3: Generate voice (Expressive Bark) ──────────────
         tts_result = generate_voice(
             text=parsed["speech_text"],
             session_id=session_id,
             output_dir=session_dir,
+            use_expressive=True,
         )
         audio_path = tts_result["mp3_path"]
         audio_duration = tts_result["duration_estimate_s"]

@@ -39,7 +39,12 @@ def _frames_to_webm_silent(frames: list, fps: int, dest: str) -> bool:
         writer.close()
         return os.path.exists(dest) and os.path.getsize(dest) > 0
     except Exception as e:
-        print(f"[Exporter] Silent WebM write error: {e}")
+        try:
+            print(f"[Exporter] Silent WebM write error: {e}")
+        except UnicodeEncodeError:
+            print(
+                f"[Exporter] Silent WebM write error: [Exception contains special characters]"
+            )
         return False
 
 
@@ -76,7 +81,12 @@ def _merge_audio_ffmpeg(
         if result.returncode == 0 and os.path.getsize(dest) > 0:
             return True
         else:
-            print(f"[Exporter] ffmpeg merge error: {result.stderr.decode()[:300]}")
+            try:
+                print(f"[Exporter] ffmpeg merge error: {result.stderr.decode()[:300]}")
+            except UnicodeEncodeError:
+                print(
+                    f"[Exporter] ffmpeg merge error: [Error contains special characters]"
+                )
             return False
     except FileNotFoundError:
         print("[Exporter] ffmpeg not found in PATH — trying bundled imageio-ffmpeg")

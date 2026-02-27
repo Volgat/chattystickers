@@ -7,8 +7,7 @@ Assembles frames into an animated GIF (usable as sticker).
 
 import os
 import math
-import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
+from PIL import Image
 
 
 # Animation presets per emotion style
@@ -100,12 +99,13 @@ def _make_frame(
     total_frames: int,
     preset: dict,
     canvas_size: int = 512,
+    is_talking: bool = True,
 ) -> Image.Image:
-    """Generate a single animation frame."""
+    """Generate a single animation frame with precise sync logic."""
     t = frame_idx / total_frames  # 0 to 1 normalized
     angle_rad = 2 * math.pi * t
 
-    # Bounce effect (vertical oscillation)
+    # Bounce effect (vertical oscillation) - smoother for stickers
     bounce_y = int(preset["bounce_amplitude"] * math.sin(angle_rad * 2))
 
     # Rotation oscillation
@@ -114,16 +114,25 @@ def _make_frame(
     # Scale pulse (breathing effect)
     scale = 1.0 + preset["scale_pulse"] * math.sin(angle_rad * 2)
 
-    # Talking intensity (for speech frames)
-    talk_intensity = max(0, math.sin(angle_rad * 3))
+    # Talking intensity (lip-sync sync)
+    # We use a combined frequency for erratic but rhythmic mouth movement
+    talk_intensity = 0
+    if is_talking:
+        talk_intensity = (math.sin(angle_rad * 12) * 0.5 + 0.5) * (
+            math.sin(angle_rad * 24) * 0.3 + 0.7
+        )
 
     # Get base dimensions
     base_w, base_h = base_img.size
 
-    # Apply scale
+    # Apply scale first
     new_w = int(base_w * scale)
     new_h = int(base_h * scale)
     scaled = base_img.resize((new_w, new_h), Image.LANCZOS)
+
+    # NEW: Apply the talking/mouth effect if intensity > 0
+    if talk_intensity > 0.1:
+        scaled = _apply_talking_effect(scaled, talk_intensity)
 
     # Apply rotation
     rotated = scaled.rotate(rotation, expand=False, resample=Image.BICUBIC)
